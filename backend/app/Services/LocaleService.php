@@ -110,7 +110,7 @@ class LocaleService
                 );
             }
 
-            \App\Models\Channel::where('locale_id', $locale->id)->update(['locale_id' => null]);
+            $this->channelRepository->clearLocaleForLocale($locale->id);
             $this->localeRepository->delete($locale);
         });
     }

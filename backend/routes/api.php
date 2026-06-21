@@ -71,11 +71,14 @@ Route::middleware(['api', 'setlocale'])->group(function () {
         Route::get('/exchange-rates/active', [ExchangeRateController::class, 'active']);
         Route::get('/exchange-rates/rate', [ExchangeRateController::class, 'getRate']);
         Route::post('/exchange-rates/matrix', [ExchangeRateController::class, 'matrix']);
-        Route::get('/exchange-rates/{id}', [ExchangeRateController::class, 'show']);
     });
 
     Route::middleware(['permission:exchange_rate.convert'])->group(function () {
         Route::get('/exchange-rates/convert', [ExchangeRateController::class, 'convert']);
+    });
+
+    Route::middleware(['permission:exchange_rate.view'])->group(function () {
+        Route::get('/exchange-rates/{id}', [ExchangeRateController::class, 'show']);
     });
 
     Route::middleware(['permission:exchange_rate.create'])->group(function () {

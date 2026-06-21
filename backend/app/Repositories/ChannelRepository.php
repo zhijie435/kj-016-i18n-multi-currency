@@ -10,7 +10,7 @@ class ChannelRepository extends BaseRepository
 {
     protected const MODEL_CLASS = 'Channel';
     protected const CACHE_TTL = 3600;
-    protected const NO_CHANGE = '__NO_LOCALE_CHANGE__';
+    public const NO_CHANGE = '__NO_LOCALE_CHANGE__';
 
     public function getAll(): Collection
     {
@@ -96,6 +96,12 @@ class ChannelRepository extends BaseRepository
     {
         $this->clearCache();
         return $channel->delete();
+    }
+
+    public function clearLocaleForLocale(int $localeId): int
+    {
+        $this->clearCache();
+        return Channel::where('locale_id', $localeId)->update(['locale_id' => null]);
     }
 
     public function clearCache(): void
