@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import i18n, { setLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveInitialLocale, loadElementUILocale, mergePackageMessages } from '@/locales'
+import i18n, { setLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveInitialLocale, loadElementUILocale, mergeLocaleMessages } from '@/locales'
 import { fetchAvailableLocales, updateServerLocale, fetchLocaleMessages, getStoredChannel, setChannel, clearChannel } from '@/api/locale'
 import { fetchEnabledChannels } from '@/api/channel'
 import ElementUILocale from 'element-ui/lib/locale'
@@ -85,8 +85,8 @@ export default new Vuex.Store({
 
       try {
         const res = await fetchLocaleMessages(applied)
-        if (res.data?.messages?.packages) {
-          mergePackageMessages(applied, res.data.messages.packages)
+        if (res.data?.messages) {
+          mergeLocaleMessages(applied, res.data.messages)
         }
       } catch (e) {}
 
@@ -126,8 +126,8 @@ export default new Vuex.Store({
 
         try {
           const localeRes = await fetchLocaleMessages(state.locale)
-          if (localeRes.data?.messages?.packages) {
-            mergePackageMessages(state.locale, localeRes.data.messages.packages)
+          if (localeRes.data?.messages) {
+            mergeLocaleMessages(state.locale, localeRes.data.messages)
           }
         } catch (e) {}
       }

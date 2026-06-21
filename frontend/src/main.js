@@ -2,7 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
-import i18n, { loadElementUILocale, resolveInitialLocale, setLocale, mergePackageMessages } from './locales'
+import i18n, { loadElementUILocale, resolveInitialLocale, setLocale, mergeLocaleMessages } from './locales'
 import ElementUI from 'element-ui'
 import ElementUILocale from 'element-ui/lib/locale'
 import 'element-ui/lib/theme-chalk/index.css'
@@ -18,6 +18,7 @@ Vue.config.productionTip = false
 
 const initialLocale = resolveInitialLocale()
 setLocale(initialLocale)
+store.commit('SET_LOCALE', initialLocale)
 
 loadElementUILocale(initialLocale)
   .then(mod => {
@@ -29,8 +30,8 @@ loadElementUILocale(initialLocale)
 
 fetchLocaleMessages(initialLocale)
   .then(res => {
-    if (res.data?.messages?.packages) {
-      mergePackageMessages(initialLocale, res.data.messages.packages)
+    if (res.data?.messages) {
+      mergeLocaleMessages(initialLocale, res.data.messages)
     }
   })
   .catch(() => {})

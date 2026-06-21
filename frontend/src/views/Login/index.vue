@@ -65,8 +65,12 @@ export default {
         username: '',
         password: '',
         remember: false
-      },
-      rules: {
+      }
+    }
+  },
+  computed: {
+    rules() {
+      return {
         username: [
           { required: true, message: this.$t('common.required_field'), trigger: 'blur' }
         ],

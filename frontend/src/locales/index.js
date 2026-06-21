@@ -51,6 +51,20 @@ function mergeMessages(locale, key, messages) {
   }
 }
 
+const BASE_MESSAGE_KEYS = ['common', 'menu', 'auth', 'validation', 'pagination', 'passwords']
+
+export function mergeLocaleMessages(locale, messages) {
+  if (!messages) return
+  BASE_MESSAGE_KEYS.forEach(key => {
+    if (messages[key] && typeof messages[key] === 'object') {
+      mergeMessages(locale, key, messages[key])
+    }
+  })
+  if (messages.packages && typeof messages.packages === 'object') {
+    mergePackageMessages(locale, messages.packages)
+  }
+}
+
 export function mergePackageMessages(locale, packages) {
   if (!packageMessages[locale]) {
     packageMessages[locale] = {}
