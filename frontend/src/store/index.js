@@ -8,7 +8,7 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     locale: resolveInitialLocale(),
-    availableLocales: SUPPORTED_LOCALES,
+    availableLocales: { ...SUPPORTED_LOCALES },
     token: localStorage.getItem('token') || '',
     userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
   },
@@ -27,7 +27,17 @@ export default new Vuex.Store({
       state.locale = locale
     },
     SET_AVAILABLE_LOCALES(state, locales) {
-      state.availableLocales = { ...state.availableLocales, ...locales }
+      const merged = {}
+      const baseLocales = { ...SUPPORTED_LOCALES }
+      Object.keys(baseLocales).forEach(code => {
+        merged[code] = { ...baseLocales[code], ...(locales[code] || {}) }
+      })
+      Object.keys(locales).forEach(code => {
+        if (!merged[code]) {
+          merged[code] = { ...locales[code] }
+        }
+      })
+      state.availableLocales = merged
     },
     SET_TOKEN(state, token) {
       state.token = token
