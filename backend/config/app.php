@@ -62,6 +62,9 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+
+        Packages\AnnotationTask\AnnotationTaskServiceProvider::class,
+        Packages\ContentReview\ContentReviewServiceProvider::class,
     ],
 
     'aliases' => [

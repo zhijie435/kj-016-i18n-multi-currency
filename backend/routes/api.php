@@ -6,7 +6,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\ExchangeRateController;
 
-Route::prefix('api')->middleware(['api', \App\Http\Middleware\SetLocale::class])->group(function () {
+Route::middleware(['api'])->group(function () {
     Route::get('/locale', [LocaleController::class, 'index']);
     Route::get('/locale/{locale}', [LocaleController::class, 'show']);
     Route::post('/locale', [LocaleController::class, 'update']);
