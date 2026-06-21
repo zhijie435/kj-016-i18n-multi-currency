@@ -32,6 +32,13 @@ export default {
   enabled: '启用',
   disabled: '禁用',
   language: '语言',
+  switch_language: '切换语言',
+  current_language: '当前语言',
+  language_changed: '语言已切换',
+  channel: '渠道',
+  switch_channel: '切换渠道',
+  channel_changed: '渠道已切换',
+  default_channel: '默认渠道',
   login: '登录',
   logout: '退出登录',
   username: '用户名',
@@ -48,8 +55,5 @@ export default {
   delete_success: '删除成功',
   save_success: '保存成功',
   network_error: '网络异常，请稍后重试',
-  required_field: '此项为必填项',
-  switch_language: '切换语言',
-  current_language: '当前语言',
-  language_changed: '语言已切换'
+  required_field: '此项为必填项'
 }

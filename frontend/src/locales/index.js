@@ -16,6 +16,8 @@ export const SUPPORTED_LOCALES = {
 
 export const DEFAULT_LOCALE = 'zh_CN'
 
+const packageMessages = {}
+
 export function getBrowserLocale() {
   const browserLang = (navigator.language || navigator.userLanguage || DEFAULT_LOCALE).replace('-', '_')
   return Object.keys(SUPPORTED_LOCALES).includes(browserLang)
@@ -36,12 +38,44 @@ export function resolveInitialLocale() {
   return getStoredLocale() || getBrowserLocale() || DEFAULT_LOCALE
 }
 
-const messages = {
+function mergeMessages(locale, key, messages) {
+  if (!i18n.messages[locale]) {
+    i18n.messages[locale] = {}
+  }
+  if (!i18n.messages[locale][key]) {
+    i18n.messages[locale][key] = {}
+  }
+  i18n.messages[locale][key] = {
+    ...i18n.messages[locale][key],
+    ...messages
+  }
+}
+
+export function mergePackageMessages(locale, packages) {
+  if (!packageMessages[locale]) {
+    packageMessages[locale] = {}
+  }
+  Object.keys(packages).forEach(packageKey => {
+    packageMessages[locale][packageKey] = packages[packageKey]
+    mergeMessages(locale, packageKey, packages[packageKey])
+  })
+}
+
+export function getPackageMessage(locale, packageKey, key) {
+  return packageMessages[locale]?.[packageKey]?.[key] || `[${packageKey}.${key}]`
+}
+
+const baseMessages = {
   zh_CN: zhCN,
   en: en,
   pt_BR: ptBR,
   ru: ru
 }
+
+const messages = {}
+Object.keys(baseMessages).forEach(locale => {
+  messages[locale] = { ...baseMessages[locale] }
+})
 
 const i18n = new VueI18n({
   locale: resolveInitialLocale(),

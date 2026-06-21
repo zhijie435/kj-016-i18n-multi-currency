@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'name' => '内容审核',
+    'description' => '内容审核与标注管理模块',
+    'review' => '审核',
+    'approve' => '通过',
+    'reject' => '拒绝',
+    'pending' => '待审核',
+    'approved' => '已通过',
+    'rejected' => '已拒绝',
+    'content' => '内容',
+    'content_type' => '内容类型',
+    'reviewer' => '审核人',
+    'review_time' => '审核时间',
+    'review_comment' => '审核意见',
+    'batch_review' => '批量审核',
+    'review_history' => '审核历史',
+    'auto_review' => '自动审核',
+    'manual_review' => '人工审核',
+    'risk_level' => '风险等级',
+    'high_risk' => '高风险',
+    'medium_risk' => '中风险',
+    'low_risk' => '低风险',
+    'violation_type' => '违规类型',
+    'violation_reason' => '违规原因',
+];

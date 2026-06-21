@@ -22,6 +22,10 @@ request.interceptors.request.use(
       config.headers['X-App-Locale'] = locale
       config.headers['Accept-Language'] = locale.replace('_', '-')
     }
+    const channel = store.state.currentChannel
+    if (channel) {
+      config.headers['X-Channel-Code'] = channel
+    }
     return config
   },
   error => Promise.reject(error)

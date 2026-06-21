@@ -2,12 +2,13 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
-import i18n, { loadElementUILocale, resolveInitialLocale, setLocale } from './locales'
+import i18n, { loadElementUILocale, resolveInitialLocale, setLocale, mergePackageMessages } from './locales'
 import ElementUI from 'element-ui'
 import ElementUILocale from 'element-ui/lib/locale'
 import 'element-ui/lib/theme-chalk/index.css'
 import './styles/index.scss'
 import request from '@/utils/request'
+import { fetchLocaleMessages } from '@/api/locale'
 
 Vue.use(ElementUI, { size: 'small' })
 
@@ -26,6 +27,14 @@ loadElementUILocale(initialLocale)
   })
   .catch(() => {})
 
+fetchLocaleMessages(initialLocale)
+  .then(res => {
+    if (res.data?.messages?.packages) {
+      mergePackageMessages(initialLocale, res.data.messages.packages)
+    }
+  })
+  .catch(() => {})
+
 store.watch(
   state => state.locale,
   newLocale => {
@@ -36,6 +45,9 @@ store.watch(
     })
   }
 )
+
+store.dispatch('loadServerLocales').catch(() => {})
+store.dispatch('loadChannels').catch(() => {})
 
 new Vue({
   router,

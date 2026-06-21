@@ -51,5 +51,9 @@ export default {
   required_field: 'Este campo é obrigatório',
   switch_language: 'Alterar Idioma',
   current_language: 'Idioma Atual',
-  language_changed: 'Idioma alterado com sucesso'
+  language_changed: 'Idioma alterado com sucesso',
+  channel: 'Canal',
+  switch_channel: 'Mudar Canal',
+  channel_changed: 'Canal alterado',
+  default_channel: 'Canal Padrão'
 }

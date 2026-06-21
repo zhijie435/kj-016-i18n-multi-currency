@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'name' => 'Revisão de Conteúdo',
+    'description' => 'Módulo de gerenciamento de revisão e anotação de conteúdo',
+    'review' => 'Revisar',
+    'approve' => 'Aprovar',
+    'reject' => 'Rejeitar',
+    'pending' => 'Pendente',
+    'approved' => 'Aprovado',
+    'rejected' => 'Rejeitado',
+    'content' => 'Conteúdo',
+    'content_type' => 'Tipo de Conteúdo',
+    'reviewer' => 'Revisor',
+    'review_time' => 'Hora da Revisão',
+    'review_comment' => 'Comentário da Revisão',
+    'batch_review' => 'Revisão em Lote',
+    'review_history' => 'Histórico de Revisão',
+    'auto_review' => 'Revisão Automática',
+    'manual_review' => 'Revisão Manual',
+    'risk_level' => 'Nível de Risco',
+    'high_risk' => 'Alto Risco',
+    'medium_risk' => 'Risco Médio',
+    'low_risk' => 'Baixo Risco',
+    'violation_type' => 'Tipo de Violação',
+    'violation_reason' => 'Motivo da Violação',
+];

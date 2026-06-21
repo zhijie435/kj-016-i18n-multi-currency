@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'name' => 'Content Review',
+    'description' => 'Content review and annotation management module',
+    'review' => 'Review',
+    'approve' => 'Approve',
+    'reject' => 'Reject',
+    'pending' => 'Pending',
+    'approved' => 'Approved',
+    'rejected' => 'Rejected',
+    'content' => 'Content',
+    'content_type' => 'Content Type',
+    'reviewer' => 'Reviewer',
+    'review_time' => 'Review Time',
+    'review_comment' => 'Review Comment',
+    'batch_review' => 'Batch Review',
+    'review_history' => 'Review History',
+    'auto_review' => 'Auto Review',
+    'manual_review' => 'Manual Review',
+    'risk_level' => 'Risk Level',
+    'high_risk' => 'High Risk',
+    'medium_risk' => 'Medium Risk',
+    'low_risk' => 'Low Risk',
+    'violation_type' => 'Violation Type',
+    'violation_reason' => 'Violation Reason',
+];

@@ -51,5 +51,9 @@ export default {
   required_field: 'This field is required',
   switch_language: 'Switch Language',
   current_language: 'Current Language',
-  language_changed: 'Language has been changed'
+  language_changed: 'Language has been changed',
+  channel: 'Channel',
+  switch_channel: 'Switch Channel',
+  channel_changed: 'Channel changed',
+  default_channel: 'Default Channel'
 }

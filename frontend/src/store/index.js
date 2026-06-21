@@ -1,7 +1,9 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import i18n, { setLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveInitialLocale } from '@/locales'
-import { fetchAvailableLocales, updateServerLocale } from '@/api/locale'
+import i18n, { setLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveInitialLocale, loadElementUILocale, mergePackageMessages } from '@/locales'
+import { fetchAvailableLocales, updateServerLocale, fetchLocaleMessages, getStoredChannel, setChannel, clearChannel } from '@/api/locale'
+import { fetchEnabledChannels } from '@/api/channel'
+import ElementUILocale from 'element-ui/lib/locale'
 
 Vue.use(Vuex)
 
@@ -10,7 +12,9 @@ export default new Vuex.Store({
     locale: resolveInitialLocale(),
     availableLocales: { ...SUPPORTED_LOCALES },
     token: localStorage.getItem('token') || '',
-    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
+    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
+    channels: [],
+    currentChannel: getStoredChannel() || ''
   },
   getters: {
     isLogin: state => !!state.token,
@@ -20,7 +24,10 @@ export default new Vuex.Store({
     availableLocaleList: state => Object.entries(state.availableLocales).map(([code, info]) => ({
       code,
       ...info
-    }))
+    })),
+    currentChannel: state => state.currentChannel,
+    availableChannels: state => state.channels,
+    currentChannelInfo: state => state.channels.find(c => c.code === state.currentChannel) || null
   },
   mutations: {
     SET_LOCALE(state, locale) {
@@ -52,6 +59,12 @@ export default new Vuex.Store({
       state.userInfo = null
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
+    },
+    SET_CHANNELS(state, channels) {
+      state.channels = channels
+    },
+    SET_CURRENT_CHANNEL(state, channelCode) {
+      state.currentChannel = channelCode
     }
   },
   actions: {
@@ -62,9 +75,25 @@ export default new Vuex.Store({
       }
       const applied = setLocale(locale)
       commit('SET_LOCALE', applied)
+
+      try {
+        const mod = await loadElementUILocale(applied)
+        if (mod && mod.default) {
+          ElementUILocale.use(mod.default)
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetchLocaleMessages(applied)
+        if (res.data?.messages?.packages) {
+          mergePackageMessages(applied, res.data.messages.packages)
+        }
+      } catch (e) {}
+
       try {
         await updateServerLocale(applied)
       } catch (e) {}
+
       return applied
     },
     async loadServerLocales({ commit }) {
@@ -74,6 +103,39 @@ export default new Vuex.Store({
           commit('SET_AVAILABLE_LOCALES', res.data.available)
         }
       } catch (e) {}
+    },
+    async loadChannels({ commit }) {
+      try {
+        const res = await fetchEnabledChannels()
+        if (res.data?.data) {
+          commit('SET_CHANNELS', res.data.data)
+        }
+      } catch (e) {}
+    },
+    async changeChannel({ commit, dispatch, state }, channelCode) {
+      if (channelCode && state.currentChannel !== channelCode) {
+        setChannel(channelCode)
+        commit('SET_CURRENT_CHANNEL', channelCode)
+
+        try {
+          const res = await fetchAvailableLocales()
+          if (res.data?.current && res.data.current !== state.locale) {
+            await dispatch('changeLocale', res.data.current)
+          }
+        } catch (e) {}
+
+        try {
+          const localeRes = await fetchLocaleMessages(state.locale)
+          if (localeRes.data?.messages?.packages) {
+            mergePackageMessages(state.locale, localeRes.data.messages.packages)
+          }
+        } catch (e) {}
+      }
+      return channelCode
+    },
+    async clearChannel({ commit }) {
+      clearChannel()
+      commit('SET_CURRENT_CHANNEL', '')
     },
     async logout({ commit }) {
       commit('CLEAR_AUTH')

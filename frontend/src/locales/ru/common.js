@@ -51,5 +51,9 @@ export default {
   required_field: 'Это поле обязательно для заполнения',
   switch_language: 'Сменить язык',
   current_language: 'Текущий язык',
-  language_changed: 'Язык изменён'
+  language_changed: 'Язык изменён',
+  channel: 'Канал',
+  switch_channel: 'Сменить канал',
+  channel_changed: 'Канал изменен',
+  default_channel: 'Канал по умолчанию'
 }
