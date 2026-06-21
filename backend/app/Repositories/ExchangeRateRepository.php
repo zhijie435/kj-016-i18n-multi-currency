@@ -2,49 +2,23 @@
 
 namespace App\Repositories;
 
-use App\Models\Currency;
 use App\Models\CurrencyExchangeRate;
+use App\Models\Currency;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 
-class ExchangeRateRepository
+class ExchangeRateRepository extends BaseRepository
 {
-    protected const CACHE_PREFIX = 'exchange_rates:';
-    protected const CACHE_TTL = 3600;
+    protected const MODEL_CLASS = 'ExchangeRate';
+    protected const CACHE_TTL = 1800;
 
-    public function getAllCurrencies(): Collection
+    protected CurrencyRepository $currencyRepository;
+
+    public function __construct(CurrencyRepository $currencyRepository)
     {
-        return Currency::ordered()->get();
+        $this->currencyRepository = $currencyRepository;
     }
 
-    public function getEnabledCurrencies(): Collection
-    {
-        return Currency::enabled()->ordered()->get();
-    }
-
-    public function getCurrencyByCode(string $code): ?Currency
-    {
-        return Currency::findByCode($code);
-    }
-
-    public function createCurrency(array $data): Currency
-    {
-        return Currency::create($data);
-    }
-
-    public function updateCurrency(Currency $currency, array $data): bool
-    {
-        return $currency->update($data);
-    }
-
-    public function deleteCurrency(Currency $currency): ?bool
-    {
-        $this->clearCache();
-        return $currency->delete();
-    }
-
-    public function getAllRates(?string $fromCode = null, ?string $toCode = null, ?string $date = null): Collection
+    public function getAll(?string $fromCode = null, ?string $toCode = null, ?string $date = null): Collection
     {
         $query = CurrencyExchangeRate::with(['fromCurrency', 'toCurrency']);
 
@@ -61,7 +35,7 @@ class ExchangeRateRepository
         return $query->orderByDesc('effective_date')->orderByDesc('id')->get();
     }
 
-    public function getActiveRates(?string $date = null): Collection
+    public function getActive(?string $date = null): Collection
     {
         return CurrencyExchangeRate::active()
             ->with(['fromCurrency', 'toCurrency'])
@@ -71,24 +45,28 @@ class ExchangeRateRepository
             ->get();
     }
 
-    public function getLatestRate(string $fromCode, string $toCode, ?string $date = null): ?CurrencyExchangeRate
+    public function findById(int $id): ?CurrencyExchangeRate
     {
-        $cacheKey = self::CACHE_PREFIX . "latest:{$fromCode}:{$toCode}:" . ($date ?? 'today');
+        return CurrencyExchangeRate::with(['fromCurrency', 'toCurrency'])->find($id);
+    }
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($fromCode, $toCode, $date) {
+    public function getLatest(string $fromCode, string $toCode, ?string $date = null): ?CurrencyExchangeRate
+    {
+        $suffix = "latest:{$fromCode}:{$toCode}:" . ($date ?? 'today');
+        return $this->remember($suffix, function () use ($fromCode, $toCode, $date) {
             return CurrencyExchangeRate::getLatestRate($fromCode, $toCode, $date);
         });
     }
 
     public function convert(float $amount, string $fromCode, string $toCode, ?string $date = null): ?float
     {
-        $rate = $this->getLatestRate($fromCode, $toCode, $date);
+        $rate = $this->getLatest($fromCode, $toCode, $date);
         return $rate ? round($amount * $rate->rate, 8) : null;
     }
 
     public function convertWithDetail(float $amount, string $fromCode, string $toCode, ?string $date = null): array
     {
-        $rate = $this->getLatestRate($fromCode, $toCode, $date);
+        $rate = $this->getLatest($fromCode, $toCode, $date);
         if (!$rate) {
             return [
                 'success' => false,
@@ -97,11 +75,12 @@ class ExchangeRateRepository
         }
 
         $converted = round($amount * $rate->rate, 8);
-        $fromCurrency = $this->getCurrencyByCode($fromCode);
-        $toCurrency = $this->getCurrencyByCode($toCode);
+        $fromCurrency = $this->currencyRepository->findByCode($fromCode);
+        $toCurrency = $this->currencyRepository->findByCode($toCode);
 
         $fromDecimals = $fromCurrency ? $fromCurrency->decimals : 2;
         $toDecimals = $toCurrency ? $toCurrency->decimals : 2;
+        $fromSymbol = $fromCurrency ? $fromCurrency->symbol : '';
         $toSymbol = $toCurrency ? $toCurrency->symbol : '';
 
         return [
@@ -111,84 +90,60 @@ class ExchangeRateRepository
             'to_currency' => $toCode,
             'rate' => $rate->rate,
             'converted_amount' => $converted,
-            'formatted_from' => ($fromCurrency ? $fromCurrency->symbol : '') . number_format($amount, $fromDecimals, '.', ','),
+            'formatted_from' => $fromSymbol . number_format($amount, $fromDecimals, '.', ','),
             'formatted_to' => $toSymbol . number_format($converted, $toDecimals, '.', ','),
             'effective_date' => $rate->effective_date,
         ];
     }
 
-    public function getExchangeRateMatrix(array $currencyCodes, ?string $date = null): array
+    public function getMatrix(array $currencyCodes, ?string $date = null): array
     {
-        $codes = $this->normalizeCurrencyCodes($currencyCodes);
+        $codes = $this->normalizeCodes($currencyCodes);
         return CurrencyExchangeRate::getExchangeRateMatrix($codes, $date);
     }
 
-    public function createRate(array $data): CurrencyExchangeRate
+    public function create(array $data): CurrencyExchangeRate
     {
-        DB::beginTransaction();
-        try {
-            if (isset($data['is_active']) && $data['is_active']) {
-                CurrencyExchangeRate::where('from_currency_code', $data['from_currency_code'])
-                    ->where('to_currency_code', $data['to_currency_code'])
-                    ->where('is_active', true)
-                    ->update(['is_active' => false]);
-            }
-
-            $rate = CurrencyExchangeRate::create($data);
-            $this->clearCache();
-
-            DB::commit();
-            return $rate;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
+        if (isset($data['is_active']) && $data['is_active']) {
+            CurrencyExchangeRate::where('from_currency_code', $data['from_currency_code'])
+                ->where('to_currency_code', $data['to_currency_code'])
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
         }
+
+        $rate = CurrencyExchangeRate::create($data);
+        $this->clearCache();
+        return $rate;
     }
 
-    public function updateRate(CurrencyExchangeRate $rate, array $data): bool
+    public function update(CurrencyExchangeRate $rate, array $data): bool
     {
-        DB::beginTransaction();
-        try {
-            $result = $rate->update($data);
-            $this->clearCache();
-
-            DB::commit();
-            return $result;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        $result = $rate->update($data);
+        $this->clearCache();
+        return $result;
     }
 
-    public function deleteRate(CurrencyExchangeRate $rate): ?bool
+    public function delete(CurrencyExchangeRate $rate): ?bool
     {
         $this->clearCache();
         return $rate->delete();
     }
 
-    public function activateRate(CurrencyExchangeRate $rate): bool
+    public function activate(CurrencyExchangeRate $rate): bool
     {
-        DB::beginTransaction();
-        try {
-            CurrencyExchangeRate::where('from_currency_code', $rate->from_currency_code)
-                ->where('to_currency_code', $rate->to_currency_code)
-                ->where('id', '!=', $rate->id)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+        CurrencyExchangeRate::where('from_currency_code', $rate->from_currency_code)
+            ->where('to_currency_code', $rate->to_currency_code)
+            ->where('id', '!=', $rate->id)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
 
-            $rate->is_active = true;
-            $result = $rate->save();
-            $this->clearCache();
-
-            DB::commit();
-            return $result;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        $rate->is_active = true;
+        $result = $rate->save();
+        $this->clearCache();
+        return $result;
     }
 
-    public function deactivateRate(CurrencyExchangeRate $rate): bool
+    public function deactivate(CurrencyExchangeRate $rate): bool
     {
         $rate->is_active = false;
         $result = $rate->save();
@@ -196,36 +151,17 @@ class ExchangeRateRepository
         return $result;
     }
 
-    public function getDefaultCurrencyInfo(): array
-    {
-        $defaultCode = config('app.default_currency', 'CNY');
-        $currency = $this->getCurrencyByCode($defaultCode);
-
-        if ($currency) {
-            return $currency->info;
-        }
-
-        $configCurrencies = config('app.available_currencies', []);
-        return $configCurrencies[$defaultCode] ?? [
-            'code' => $defaultCode,
-            'name' => '',
-            'symbol' => '',
-            'decimals' => 2,
-        ];
-    }
-
-    protected function normalizeCurrencyCodes(array $codes): array
-    {
-        $available = Currency::getAvailableCurrencyCodes();
-        if (empty($available)) {
-            $available = array_keys(config('app.available_currencies', []));
-        }
-        return array_intersect($codes, $available);
-    }
-
     public function clearCache(): void
     {
-        $prefix = self::CACHE_PREFIX;
-        Cache::forget($prefix . '*');
+        $this->clearCacheByPrefix();
+    }
+
+    protected function normalizeCodes(array $codes): array
+    {
+        $available = $this->currencyRepository->getAvailableCodes();
+        if (empty($available)) {
+            return $codes;
+        }
+        return array_values(array_intersect($codes, $available));
     }
 }

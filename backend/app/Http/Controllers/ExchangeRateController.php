@@ -2,33 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Currency;
-use App\Models\CurrencyExchangeRate;
-use App\Repositories\ExchangeRateRepository;
+use App\Services\ExchangeRateService;
+use App\Services\PermissionService;
+use App\Http\Requests\StoreExchangeRateRequest;
+use App\Http\Requests\UpdateExchangeRateRequest;
+use App\Http\Requests\GetExchangeRateRequest;
+use App\Http\Requests\ConvertCurrencyRequest;
+use App\Http\Requests\ExchangeRateMatrixRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Config;
 
 class ExchangeRateController extends Controller
 {
-    protected ExchangeRateRepository $repository;
+    protected ExchangeRateService $exchangeRateService;
+    protected PermissionService $permissionService;
 
-    public function __construct(ExchangeRateRepository $repository)
-    {
-        $this->repository = $repository;
+    public function __construct(
+        ExchangeRateService $exchangeRateService,
+        PermissionService $permissionService
+    ) {
+        $this->exchangeRateService = $exchangeRateService;
+        $this->permissionService = $permissionService;
     }
 
     public function index(Request $request)
     {
+        $this->permissionService->requirePermission('exchange_rate.view');
+
         $fromCode = $request->input('from_currency_code');
         $toCode = $request->input('to_currency_code');
         $date = $request->input('date');
 
-        try {
-            $rates = $this->repository->getAllRates($fromCode, $toCode, $date);
-        } catch (\Exception $e) {
-            $rates = collect([]);
-        }
+        $rates = $this->exchangeRateService->getAll($fromCode, $toCode, $date);
 
         return response()->json([
             'data' => $rates,
@@ -37,13 +41,10 @@ class ExchangeRateController extends Controller
 
     public function active(Request $request)
     {
-        $date = $request->input('date');
+        $this->permissionService->requirePermission('exchange_rate.view');
 
-        try {
-            $rates = $this->repository->getActiveRates($date);
-        } catch (\Exception $e) {
-            $rates = collect([]);
-        }
+        $date = $request->input('date');
+        $rates = $this->exchangeRateService->getActive($date);
 
         return response()->json([
             'data' => $rates,
@@ -52,7 +53,9 @@ class ExchangeRateController extends Controller
 
     public function show($id)
     {
-        $rate = CurrencyExchangeRate::with(['fromCurrency', 'toCurrency'])->findOrFail($id);
+        $this->permissionService->requirePermission('exchange_rate.view');
+
+        $rate = $this->exchangeRateService->getById((int) $id);
 
         return response()->json([
             'success' => true,
@@ -60,30 +63,16 @@ class ExchangeRateController extends Controller
         ]);
     }
 
-    public function getRate(Request $request)
+    public function getRate(GetExchangeRateRequest $request)
     {
-        $validated = $request->validate([
-            'from_currency_code' => 'required|string',
-            'to_currency_code' => 'required|string',
-            'date' => 'nullable|date',
-        ]);
+        $this->permissionService->requirePermission('exchange_rate.view');
 
-        try {
-            $rate = $this->repository->getLatestRate(
-                $validated['from_currency_code'],
-                $validated['to_currency_code'],
-                $validated['date'] ?? null
-            );
-        } catch (\Exception $e) {
-            $rate = null;
-        }
-
-        if (!$rate) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Exchange rate not found',
-            ], 404);
-        }
+        $validated = $request->validated();
+        $rate = $this->exchangeRateService->getLatest(
+            $validated['from_currency_code'],
+            $validated['to_currency_code'],
+            $validated['date'] ?? null
+        );
 
         return response()->json([
             'success' => true,
@@ -96,48 +85,30 @@ class ExchangeRateController extends Controller
         ]);
     }
 
-    public function convert(Request $request)
+    public function convert(ConvertCurrencyRequest $request)
     {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:0',
-            'from_currency_code' => 'required|string',
-            'to_currency_code' => 'required|string',
-            'date' => 'nullable|date',
-        ]);
+        $this->permissionService->requirePermission('exchange_rate.convert');
 
-        try {
-            $result = $this->repository->convertWithDetail(
-                (float) $validated['amount'],
-                $validated['from_currency_code'],
-                $validated['to_currency_code'],
-                $validated['date'] ?? null
-            );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Conversion failed: ' . $e->getMessage(),
-            ], 500);
-        }
+        $validated = $request->validated();
+        $result = $this->exchangeRateService->convertWithDetail(
+            (float) $validated['amount'],
+            $validated['from_currency_code'],
+            $validated['to_currency_code'],
+            $validated['date'] ?? null
+        );
 
         return response()->json($result);
     }
 
-    public function matrix(Request $request)
+    public function matrix(ExchangeRateMatrixRequest $request)
     {
-        $validated = $request->validate([
-            'currency_codes' => 'required|array',
-            'currency_codes.*' => 'string',
-            'date' => 'nullable|date',
-        ]);
+        $this->permissionService->requirePermission('exchange_rate.view');
 
-        try {
-            $matrix = $this->repository->getExchangeRateMatrix(
-                $validated['currency_codes'],
-                $validated['date'] ?? null
-            );
-        } catch (\Exception $e) {
-            $matrix = [];
-        }
+        $validated = $request->validated();
+        $matrix = $this->exchangeRateService->getMatrix(
+            $validated['currency_codes'],
+            $validated['date'] ?? null
+        );
 
         return response()->json([
             'success' => true,
@@ -145,138 +116,67 @@ class ExchangeRateController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreExchangeRateRequest $request)
     {
-        $validated = $request->validate([
-            'from_currency_code' => 'required|string|exists:currencies,code',
-            'to_currency_code' => 'required|string|exists:currencies,code|different:from_currency_code',
-            'rate' => 'required|numeric|gt:0',
-            'effective_date' => 'nullable|date',
-            'source' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        $this->permissionService->requirePermission('exchange_rate.create');
 
-        DB::beginTransaction();
-        try {
-            $rate = $this->repository->createRate($validated);
-            $rate->load(['fromCurrency', 'toCurrency']);
-            DB::commit();
+        $rate = $this->exchangeRateService->create($request->validated());
 
-            return response()->json([
-                'success' => true,
-                'data' => $rate,
-                'message' => 'Exchange rate created successfully',
-            ], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create exchange rate: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $rate,
+            'message' => 'Exchange rate created successfully',
+        ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateExchangeRateRequest $request, $id)
     {
-        $rate = CurrencyExchangeRate::findOrFail($id);
+        $this->permissionService->requirePermission('exchange_rate.update');
 
-        $validated = $request->validate([
-            'from_currency_code' => 'string|exists:currencies,code',
-            'to_currency_code' => 'string|exists:currencies,code|different:from_currency_code',
-            'rate' => 'numeric|gt:0',
-            'effective_date' => 'nullable|date',
-            'source' => 'nullable|string',
-            'is_active' => 'boolean',
+        $rate = $this->exchangeRateService->update((int) $id, $request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => $rate,
+            'message' => 'Exchange rate updated successfully',
         ]);
-
-        DB::beginTransaction();
-        try {
-            $this->repository->updateRate($rate, $validated);
-            $rate->refresh();
-            $rate->load(['fromCurrency', 'toCurrency']);
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $rate,
-                'message' => 'Exchange rate updated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update exchange rate: ' . $e->getMessage(),
-            ], 500);
-        }
     }
 
     public function destroy($id)
     {
-        $rate = CurrencyExchangeRate::findOrFail($id);
+        $this->permissionService->requirePermission('exchange_rate.delete');
 
-        DB::beginTransaction();
-        try {
-            $this->repository->deleteRate($rate);
-            DB::commit();
+        $this->exchangeRateService->delete((int) $id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Exchange rate deleted successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete exchange rate: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Exchange rate deleted successfully',
+        ]);
     }
 
     public function activate($id)
     {
-        $rate = CurrencyExchangeRate::findOrFail($id);
+        $this->permissionService->requirePermission('exchange_rate.activate');
 
-        DB::beginTransaction();
-        try {
-            $this->repository->activateRate($rate);
-            $rate->refresh();
-            DB::commit();
+        $rate = $this->exchangeRateService->activate((int) $id);
 
-            return response()->json([
-                'success' => true,
-                'data' => $rate,
-                'message' => 'Exchange rate activated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to activate exchange rate: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $rate,
+            'message' => 'Exchange rate activated successfully',
+        ]);
     }
 
     public function deactivate($id)
     {
-        $rate = CurrencyExchangeRate::findOrFail($id);
+        $this->permissionService->requirePermission('exchange_rate.deactivate');
 
-        DB::beginTransaction();
-        try {
-            $this->repository->deactivateRate($rate);
-            $rate->refresh();
-            DB::commit();
+        $rate = $this->exchangeRateService->deactivate((int) $id);
 
-            return response()->json([
-                'success' => true,
-                'data' => $rate,
-                'message' => 'Exchange rate deactivated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to deactivate exchange rate: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $rate,
+            'message' => 'Exchange rate deactivated successfully',
+        ]);
     }
 }

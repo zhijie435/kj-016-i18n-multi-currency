@@ -2,8 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Channel;
-use App\Models\Locale;
+use App\Services\LocaleService;
+use App\Services\ChannelService;
+use App\Services\CurrencyService;
 use Closure;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
@@ -11,22 +12,27 @@ use Illuminate\Support\Facades\Session;
 
 class SetLocale
 {
+    protected LocaleService $localeService;
+    protected ChannelService $channelService;
+    protected CurrencyService $currencyService;
+
+    public function __construct(
+        LocaleService $localeService,
+        ChannelService $channelService,
+        CurrencyService $currencyService
+    ) {
+        $this->localeService = $localeService;
+        $this->channelService = $channelService;
+        $this->currencyService = $currencyService;
+    }
+
     public function handle($request, Closure $next)
     {
-        try {
-            $availableLocales = Locale::getAvailableLocaleCodes();
-        } catch (\Exception $e) {
-            $availableLocales = array_keys(Config::get('app.available_locales', []));
-        }
-
+        $availableLocales = $this->localeService->getAvailableCodes();
         $locale = $this->resolveLocale($request, $availableLocales);
 
         if (!in_array($locale, $availableLocales, true)) {
-            try {
-                $locale = Locale::getDefaultLocale();
-            } catch (\Exception $e) {
-                $locale = Config::get('app.fallback_locale', 'en');
-            }
+            $locale = $this->localeService->getDefaultCode();
         }
 
         App::setLocale($locale);
@@ -42,11 +48,12 @@ class SetLocale
         $channelCode = $request->header('X-Channel-Code') ?? $request->input('channel');
         if ($channelCode) {
             try {
-                $channelLocale = Channel::getChannelLocaleCode($channelCode);
+                $channelLocale = $this->channelService->getChannelLocaleCode($channelCode);
                 if ($channelLocale && in_array($channelLocale, $availableLocales, true)) {
                     return $channelLocale;
                 }
             } catch (\Exception $e) {
+                report($e);
             }
         }
 
@@ -70,11 +77,7 @@ class SetLocale
             return $preferredLocale;
         }
 
-        try {
-            return Locale::getDefaultLocale();
-        } catch (\Exception $e) {
-            return Config::get('app.locale', 'zh_CN');
-        }
+        return $this->localeService->getDefaultCode();
     }
 
     protected function resolveCurrency($request): void
@@ -82,13 +85,14 @@ class SetLocale
         $channelCode = $request->header('X-Channel-Code') ?? $request->input('channel');
         if ($channelCode) {
             try {
-                $currency = Channel::getChannelCurrency($channelCode);
+                $currency = $this->channelService->getChannelCurrency($channelCode);
                 if ($currency && !empty($currency['code'])) {
                     Config::set('app.current_currency', $currency);
                     Session::put('currency', $currency);
                     return;
                 }
             } catch (\Exception $e) {
+                report($e);
             }
         }
 
@@ -98,9 +102,7 @@ class SetLocale
             return;
         }
 
-        $defaultCurrency = Config::get('app.default_currency', 'CNY');
-        $currencies = Config::get('app.available_currencies', []);
-        $currency = $currencies[$defaultCurrency] ?? ['code' => $defaultCurrency, 'symbol' => '', 'name' => '', 'decimals' => 2];
+        $currency = $this->currencyService->getDefaultInfo();
         Config::set('app.current_currency', $currency);
     }
 }

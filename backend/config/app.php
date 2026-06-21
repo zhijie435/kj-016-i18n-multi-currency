@@ -27,6 +27,8 @@ return [
 
     'default_currency' => 'CNY',
 
+    'default_role' => 'viewer',
+
     'available_currencies' => [
         'CNY' => ['name' => '人民币', 'symbol' => '¥', 'code' => 'CNY', 'decimals' => 2],
         'USD' => ['name' => '美元',   'symbol' => '$', 'code' => 'USD', 'decimals' => 2],
@@ -62,6 +64,8 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+
+        App\Providers\PermissionServiceProvider::class,
 
         Packages\AnnotationTask\AnnotationTaskServiceProvider::class,
         Packages\ContentReview\ContentReviewServiceProvider::class,

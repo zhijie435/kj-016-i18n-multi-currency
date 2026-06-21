@@ -2,256 +2,147 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Locale;
-use App\Models\Channel;
+use App\Services\LocaleService;
+use App\Services\ChannelService;
+use App\Services\CurrencyService;
+use App\Http\Requests\StoreLocaleRequest;
+use App\Http\Requests\UpdateLocaleRequest;
+use App\Http\Requests\UpdateLocalePreferenceRequest;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 
 class LocaleController extends Controller
 {
-    public function index()
-    {
-        try {
-            $availableLocales = Locale::getAvailableLocales();
-        } catch (\Exception $e) {
-            $availableLocales = Config::get('app.available_locales', []);
-        }
+    protected LocaleService $localeService;
+    protected ChannelService $channelService;
+    protected CurrencyService $currencyService;
+    protected PermissionService $permissionService;
 
+    public function __construct(
+        LocaleService $localeService,
+        ChannelService $channelService,
+        CurrencyService $currencyService,
+        PermissionService $permissionService
+    ) {
+        $this->localeService = $localeService;
+        $this->channelService = $channelService;
+        $this->currencyService = $currencyService;
+        $this->permissionService = $permissionService;
+    }
+
+    public function index(Request $request)
+    {
+        $this->permissionService->requirePermission('locale.view');
+
+        $availableLocales = $this->localeService->getAvailableLocales();
         $currentLocale = App::getLocale();
 
-        try {
-            $enabledCurrencies = \App\Models\Currency::enabled()->ordered()->get();
-            if ($enabledCurrencies->isNotEmpty()) {
-                $availableCurrencies = $enabledCurrencies->keyBy('code')->map(function ($currency) {
-                    return [
-                        'name' => $currency->name,
-                        'symbol' => $currency->symbol,
-                        'code' => $currency->code,
-                        'decimals' => $currency->decimals,
-                    ];
-                })->toArray();
-            } else {
-                $availableCurrencies = Config::get('app.available_currencies', []);
-            }
-        } catch (\Exception $e) {
-            $availableCurrencies = Config::get('app.available_currencies', []);
-        }
-
-        $defaultCode = Config::get('app.default_currency', 'CNY');
-        $channelCode = request()->header('X-Channel-Code') ?: request()->input('channel_code');
-        $currentCurrency = null;
-
-        if ($channelCode) {
-            try {
-                $channel = \App\Models\Channel::findByCode($channelCode);
-                if ($channel && $channel->currency_code) {
-                    $currentCurrency = $channel->currency_info;
-                }
-            } catch (\Exception $e) {}
-        }
-
-        if (!$currentCurrency) {
-            $currentCurrency = $availableCurrencies[$defaultCode] ?? [
-                'code' => $defaultCode,
-                'name' => '',
-                'symbol' => '',
-                'decimals' => 2,
-            ];
-        }
+        $channelCode = $request->header('X-Channel-Code') ?: $request->input('channel_code');
+        $context = $this->channelService->getCurrentContext($channelCode);
 
         return response()->json([
             'current' => $currentLocale,
             'available' => $availableLocales,
             'currency' => [
-                'current' => $currentCurrency,
-                'available' => $availableCurrencies,
+                'current' => $context['currencies']['current'],
+                'available' => $context['currencies']['available'],
             ],
         ]);
     }
 
     public function show($locale)
     {
-        try {
-            $availableLocales = Locale::getAvailableLocaleCodes();
-        } catch (\Exception $e) {
-            $availableLocales = array_keys(Config::get('app.available_locales', []));
-        }
+        $this->permissionService->requirePermission('locale.view');
 
-        if (!in_array($locale, $availableLocales, true)) {
-            return response()->json([
-                'error' => 'Unsupported locale',
-                'available' => $availableLocales,
-            ], 400);
-        }
+        $validLocale = $this->localeService->validateCode($locale);
 
-        App::setLocale($locale);
+        App::setLocale($validLocale);
 
         $messages = [
-            'auth'      => Lang::get('auth'),
+            'auth'       => Lang::get('auth'),
             'pagination' => Lang::get('pagination'),
-            'passwords' => Lang::get('passwords'),
+            'passwords'  => Lang::get('passwords'),
             'validation' => Lang::get('validation'),
-            'common'    => Lang::get('common'),
-            'menu'      => Lang::get('menu'),
-            'packages'  => [
-                'content-review' => Lang::get('content-review::messages'),
+            'common'     => Lang::get('common'),
+            'menu'       => Lang::get('menu'),
+            'packages'   => [
+                'content-review'  => Lang::get('content-review::messages'),
                 'annotation-task' => Lang::get('annotation-task::messages'),
             ],
         ];
 
         return response()->json([
-            'locale'   => $locale,
+            'locale'   => $validLocale,
             'messages' => $messages,
         ]);
     }
 
-    public function update(Request $request)
+    public function update(UpdateLocalePreferenceRequest $request)
     {
-        $validated = $request->validate([
-            'locale' => 'required|string',
-        ]);
+        $this->permissionService->requirePermission('locale.view');
 
-        try {
-            $availableLocales = Locale::getAvailableLocaleCodes();
-        } catch (\Exception $e) {
-            $availableLocales = array_keys(Config::get('app.available_locales', []));
-        }
+        $validated = $request->validated();
+        $validLocale = $this->localeService->validateCode($validated['locale']);
 
-        $locale = $validated['locale'];
-
-        if (!in_array($locale, $availableLocales, true)) {
-            return response()->json([
-                'error' => 'Unsupported locale',
-                'available' => $availableLocales,
-            ], 400);
-        }
-
-        App::setLocale($locale);
-        session()->put('locale', $locale);
+        App::setLocale($validLocale);
+        Session::put('locale', $validLocale);
 
         return response()->json([
             'success' => true,
-            'locale'  => $locale,
+            'locale'  => $validLocale,
             'message' => 'Locale updated successfully',
         ]);
     }
 
     public function all()
     {
-        $locales = Locale::ordered()->get();
+        $this->permissionService->requirePermission('locale.view');
+
+        $locales = $this->localeService->getAll();
 
         return response()->json([
             'data' => $locales,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreLocaleRequest $request)
     {
-        $validated = $request->validate([
-            'code' => 'required|string|max:16|unique:locales,code',
-            'name' => 'required|string|max:64',
-            'native_name' => 'required|string|max:64',
-            'flag' => 'nullable|string|max:16',
-            'element_locale' => 'nullable|string|max:32',
-            'is_default' => 'boolean',
-            'is_enabled' => 'boolean',
-            'sort_order' => 'integer|min:0',
-        ]);
+        $this->permissionService->requirePermission('locale.create');
 
-        DB::beginTransaction();
-        try {
-            if (isset($validated['is_default']) && $validated['is_default']) {
-                Locale::query()->update(['is_default' => false]);
-            }
+        $locale = $this->localeService->create($request->validated());
 
-            $locale = Locale::create($validated);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $locale,
-                'message' => 'Locale created successfully',
-            ], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create locale: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $locale,
+            'message' => 'Locale created successfully',
+        ], 201);
     }
 
-    public function updateLocale(Request $request, $id)
+    public function updateLocale(UpdateLocaleRequest $request, $id)
     {
-        $locale = Locale::findOrFail($id);
+        $this->permissionService->requirePermission('locale.update');
 
-        $validated = $request->validate([
-            'code' => 'string|max:16|unique:locales,code,' . $locale->id,
-            'name' => 'string|max:64',
-            'native_name' => 'string|max:64',
-            'flag' => 'nullable|string|max:16',
-            'element_locale' => 'nullable|string|max:32',
-            'is_default' => 'boolean',
-            'is_enabled' => 'boolean',
-            'sort_order' => 'integer|min:0',
+        $locale = $this->localeService->update((int) $id, $request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => $locale,
+            'message' => 'Locale updated successfully',
         ]);
-
-        DB::beginTransaction();
-        try {
-            if (isset($validated['is_default']) && $validated['is_default']) {
-                Locale::query()->where('id', '!=', $locale->id)->update(['is_default' => false]);
-            }
-
-            $locale->update($validated);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $locale,
-                'message' => 'Locale updated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update locale: ' . $e->getMessage(),
-            ], 500);
-        }
     }
 
     public function destroy($id)
     {
-        $locale = Locale::findOrFail($id);
+        $this->permissionService->requirePermission('locale.delete');
 
-        if ($locale->is_default) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete the default locale',
-            ], 400);
-        }
+        $this->localeService->delete((int) $id);
 
-        DB::beginTransaction();
-        try {
-            Channel::where('locale_id', $locale->id)->update(['locale_id' => null]);
-            $locale->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Locale deleted successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete locale: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Locale deleted successfully',
+        ]);
     }
 }

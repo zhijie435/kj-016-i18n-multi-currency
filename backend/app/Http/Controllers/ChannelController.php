@@ -2,16 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Channel;
-use App\Models\Locale;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Services\ChannelService;
+use App\Services\LocaleService;
+use App\Services\PermissionService;
+use App\Http\Requests\StoreChannelRequest;
+use App\Http\Requests\UpdateChannelRequest;
+use App\Http\Requests\UpdateChannelLocaleRequest;
 
 class ChannelController extends Controller
 {
+    protected ChannelService $channelService;
+    protected LocaleService $localeService;
+    protected PermissionService $permissionService;
+
+    public function __construct(
+        ChannelService $channelService,
+        LocaleService $localeService,
+        PermissionService $permissionService
+    ) {
+        $this->channelService = $channelService;
+        $this->localeService = $localeService;
+        $this->permissionService = $permissionService;
+    }
+
     public function index()
     {
-        $channels = Channel::with('locale')->ordered()->get();
+        $this->permissionService->requirePermission('channel.view');
+
+        $channels = $this->channelService->getAll();
 
         return response()->json([
             'data' => $channels,
@@ -20,7 +38,9 @@ class ChannelController extends Controller
 
     public function enabled()
     {
-        $channels = Channel::with('locale')->enabled()->ordered()->get();
+        $this->permissionService->requirePermission('channel.view');
+
+        $channels = $this->channelService->getEnabled();
 
         return response()->json([
             'data' => $channels,
@@ -29,211 +49,72 @@ class ChannelController extends Controller
 
     public function show($id)
     {
-        $channel = Channel::with('locale')->findOrFail($id);
+        $this->permissionService->requirePermission('channel.view');
+
+        $channel = $this->channelService->getById((int) $id);
 
         return response()->json([
             'data' => $channel,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreChannelRequest $request)
     {
-        $validated = $request->validate([
-            'code' => 'required|string|max:64|unique:channels,code',
-            'name' => 'required|string|max:128',
-            'description' => 'nullable|string',
-            'locale_code' => 'nullable|string|exists:locales,code',
-            'currency_code' => 'nullable|string|max:16',
-            'currency_symbol' => 'nullable|string|max:16',
-            'currency_decimals' => 'nullable|integer|min:0|max:8',
-            'is_enabled' => 'boolean',
-            'sort_order' => 'integer|min:0',
-        ]);
+        $this->permissionService->requirePermission('channel.create');
 
-        DB::beginTransaction();
-        try {
-            $channel = new Channel();
-            $channel->code = $validated['code'];
-            $channel->name = $validated['name'];
-            $channel->description = $validated['description'] ?? null;
-            $channel->currency_code = $validated['currency_code'] ?? null;
-            $channel->currency_symbol = $validated['currency_symbol'] ?? null;
-            $channel->currency_decimals = $validated['currency_decimals'] ?? 2;
-            $channel->is_enabled = $validated['is_enabled'] ?? true;
-            $channel->sort_order = $validated['sort_order'] ?? 0;
+        $channel = $this->channelService->create($request->validated());
 
-            if (isset($validated['locale_code'])) {
-                $locale = Locale::findByCode($validated['locale_code']);
-                if ($locale) {
-                    $channel->locale()->associate($locale);
-                }
-            }
-
-            $channel->save();
-            $channel->load('locale');
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $channel,
-                'message' => 'Channel created successfully',
-            ], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create channel: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $channel,
+            'message' => 'Channel created successfully',
+        ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateChannelRequest $request, $id)
     {
-        $channel = Channel::findOrFail($id);
+        $this->permissionService->requirePermission('channel.update');
 
-        $validated = $request->validate([
-            'code' => 'string|max:64|unique:channels,code,' . $channel->id,
-            'name' => 'string|max:128',
-            'description' => 'nullable|string',
-            'locale_code' => 'nullable|string',
-            'currency_code' => 'nullable|string|max:16',
-            'currency_symbol' => 'nullable|string|max:16',
-            'currency_decimals' => 'nullable|integer|min:0|max:8',
-            'is_enabled' => 'boolean',
-            'sort_order' => 'integer|min:0',
+        $channel = $this->channelService->update((int) $id, $request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => $channel,
+            'message' => 'Channel updated successfully',
         ]);
-
-        DB::beginTransaction();
-        try {
-            if (isset($validated['code'])) {
-                $channel->code = $validated['code'];
-            }
-            if (isset($validated['name'])) {
-                $channel->name = $validated['name'];
-            }
-            if (array_key_exists('description', $validated)) {
-                $channel->description = $validated['description'];
-            }
-            if (isset($validated['currency_code'])) {
-                $channel->currency_code = $validated['currency_code'];
-            }
-            if (isset($validated['currency_symbol'])) {
-                $channel->currency_symbol = $validated['currency_symbol'];
-            }
-            if (isset($validated['currency_decimals'])) {
-                $channel->currency_decimals = $validated['currency_decimals'];
-            }
-            if (isset($validated['is_enabled'])) {
-                $channel->is_enabled = $validated['is_enabled'];
-            }
-            if (isset($validated['sort_order'])) {
-                $channel->sort_order = $validated['sort_order'];
-            }
-
-            if (array_key_exists('locale_code', $validated)) {
-                if ($validated['locale_code'] === null || $validated['locale_code'] === '') {
-                    $channel->locale()->dissociate();
-                } else {
-                    $locale = Locale::findByCode($validated['locale_code']);
-                    if ($locale) {
-                        $channel->locale()->associate($locale);
-                    }
-                }
-            }
-
-            $channel->save();
-            $channel->load('locale');
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $channel,
-                'message' => 'Channel updated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update channel: ' . $e->getMessage(),
-            ], 500);
-        }
     }
 
-    public function updateLocale(Request $request, $id)
+    public function updateLocale(UpdateChannelLocaleRequest $request, $id)
     {
-        $channel = Channel::findOrFail($id);
+        $this->permissionService->requirePermission('channel.update');
 
-        $validated = $request->validate([
-            'locale_code' => 'required|string',
+        $validated = $request->validated();
+        $channel = $this->channelService->updateLocale((int) $id, $validated['locale_code']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $channel,
+            'message' => 'Channel locale updated successfully',
         ]);
-
-        DB::beginTransaction();
-        try {
-            $locale = Locale::findByCode($validated['locale_code']);
-            if (!$locale) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Locale not found',
-                ], 404);
-            }
-
-            $channel->locale()->associate($locale);
-            $channel->save();
-            $channel->load('locale');
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'data' => $channel,
-                'message' => 'Channel locale updated successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update channel locale: ' . $e->getMessage(),
-            ], 500);
-        }
     }
 
     public function destroy($id)
     {
-        $channel = Channel::findOrFail($id);
+        $this->permissionService->requirePermission('channel.delete');
 
-        DB::beginTransaction();
-        try {
-            $channel->delete();
+        $this->channelService->delete((int) $id);
 
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Channel deleted successfully',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete channel: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Channel deleted successfully',
+        ]);
     }
 
     public function getChannelLocale($channelCode)
     {
-        $localeCode = Channel::getChannelLocaleCode($channelCode);
+        $this->permissionService->requirePermission('channel.view');
 
-        if (!$localeCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Channel or locale not found',
-            ], 404);
-        }
-
-        $locale = Locale::findByCode($localeCode);
+        $locale = $this->channelService->getChannelLocale($channelCode);
 
         return response()->json([
             'success' => true,
@@ -243,13 +124,9 @@ class ChannelController extends Controller
 
     public function getChannelCurrency($channelCode)
     {
-        $currency = Channel::getChannelCurrency($channelCode);
+        $this->permissionService->requirePermission('channel.view');
 
-        if (!$currency) {
-            $defaultCurrency = config('app.default_currency', 'CNY');
-            $currencies = config('app.available_currencies', []);
-            $currency = $currencies[$defaultCurrency] ?? ['code' => $defaultCurrency, 'symbol' => '', 'name' => '', 'decimals' => 2];
-        }
+        $currency = $this->channelService->getChannelCurrency($channelCode);
 
         return response()->json([
             'success' => true,
