@@ -104,6 +104,9 @@ export function setLocale(locale) {
     console.warn(`[i18n] Unsupported locale: ${locale}, fallback to ${DEFAULT_LOCALE}`)
     locale = DEFAULT_LOCALE
   }
+  if (i18n.locale === locale) {
+    return locale
+  }
   i18n.locale = locale
   try {
     localStorage.setItem('app_locale', locale)

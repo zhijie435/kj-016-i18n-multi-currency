@@ -68,11 +68,46 @@ export default new Vuex.Store({
     }
   },
   actions: {
+    async initializeApp({ dispatch, commit }) {
+      const initialLocale = resolveInitialLocale()
+      commit('SET_LOCALE', initialLocale)
+      setLocale(initialLocale)
+
+      try {
+        const mod = await loadElementUILocale(initialLocale)
+        if (mod && mod.default) {
+          ElementUILocale.use(mod.default)
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetchLocaleMessages(initialLocale)
+        if (res.data?.messages) {
+          mergeLocaleMessages(initialLocale, res.data.messages)
+        }
+      } catch (e) {}
+
+      try {
+        await updateServerLocale(initialLocale)
+      } catch (e) {}
+
+      await Promise.all([
+        dispatch('loadServerLocales'),
+        dispatch('loadChannels')
+      ]).catch(() => {})
+
+      return initialLocale
+    },
+
     async changeLocale({ commit, state }, locale) {
       if (!state.availableLocales[locale]) {
         console.warn(`[store] Unsupported locale: ${locale}`)
         return state.locale
       }
+      if (locale === state.locale) {
+        return locale
+      }
+
       const applied = setLocale(locale)
       commit('SET_LOCALE', applied)
 
@@ -96,6 +131,7 @@ export default new Vuex.Store({
 
       return applied
     },
+
     async loadServerLocales({ commit }) {
       try {
         const res = await fetchAvailableLocales()
@@ -104,6 +140,7 @@ export default new Vuex.Store({
         }
       } catch (e) {}
     },
+
     async loadChannels({ commit }) {
       try {
         const res = await fetchEnabledChannels()
@@ -112,31 +149,39 @@ export default new Vuex.Store({
         }
       } catch (e) {}
     },
+
     async changeChannel({ commit, dispatch, state }, channelCode) {
-      if (channelCode && state.currentChannel !== channelCode) {
-        setChannel(channelCode)
-        commit('SET_CURRENT_CHANNEL', channelCode)
-
-        try {
-          const res = await fetchAvailableLocales()
-          if (res.data?.current && res.data.current !== state.locale) {
-            await dispatch('changeLocale', res.data.current)
-          }
-        } catch (e) {}
-
-        try {
-          const localeRes = await fetchLocaleMessages(state.locale)
-          if (localeRes.data?.messages) {
-            mergeLocaleMessages(state.locale, localeRes.data.messages)
-          }
-        } catch (e) {}
+      if (channelCode === state.currentChannel) {
+        return channelCode
       }
+
+      setChannel(channelCode)
+      commit('SET_CURRENT_CHANNEL', channelCode)
+
+      let newLocale = state.locale
+
+      try {
+        const res = await fetchAvailableLocales()
+        if (res.data?.current && res.data.current !== state.locale) {
+          newLocale = await dispatch('changeLocale', res.data.current)
+        }
+      } catch (e) {}
+
+      try {
+        const localeRes = await fetchLocaleMessages(newLocale)
+        if (localeRes.data?.messages) {
+          mergeLocaleMessages(newLocale, localeRes.data.messages)
+        }
+      } catch (e) {}
+
       return channelCode
     },
+
     async clearChannel({ commit }) {
       clearChannel()
       commit('SET_CURRENT_CHANNEL', '')
     },
+
     async logout({ commit }) {
       commit('CLEAR_AUTH')
     }
