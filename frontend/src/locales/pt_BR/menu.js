@@ -1,0 +1,21 @@
+export default {
+  dashboard: 'Painel',
+  annotation: 'Anotação',
+  annotation_task: 'Tarefas de Anotação',
+  annotation_work: 'Trabalho de Anotação',
+  review: 'Gestão de Revisão',
+  review_task: 'Tarefas de Revisão',
+  review_work: 'Trabalho de Revisão',
+  dataset: 'Gestão de Conjunto de Dados',
+  dataset_list: 'Lista de Conjuntos de Dados',
+  dataset_import: 'Importação de Dados',
+  user: 'Gestão de Usuários',
+  user_list: 'Lista de Usuários',
+  role: 'Funções e Permissões',
+  system: 'Configurações do Sistema',
+  system_config: 'Configuração do Sistema',
+  operation_log: 'Registros de Operação',
+  statistics: 'Estatísticas',
+  quality_report: 'Relatório de Qualidade',
+  workload: 'Estatísticas de Carga de Trabalho'
+}

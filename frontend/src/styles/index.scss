@@ -1,0 +1,91 @@
+.app-container {
+  height: 100vh;
+}
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .logo {
+      font-size: 18px;
+      margin: 0;
+      color: #303133;
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .user-info,
+    .locale-switcher {
+      cursor: pointer;
+      color: #606266;
+    }
+  }
+}
+
+.app-aside {
+  background: #304156;
+  overflow-x: hidden;
+
+  .el-menu {
+    border-right: none;
+  }
+}
+
+.app-main {
+  background: #f0f2f5;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f5f7fa;
+  }
+
+  .locale-flag {
+    font-size: 16px;
+  }
+
+  .locale-label {
+    font-size: 13px;
+  }
+}
+
+.locale-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .locale-flag {
+    font-size: 16px;
+  }
+
+  .locale-native {
+    font-weight: 500;
+  }
+
+  .locale-name {
+    color: #909399;
+    font-size: 12px;
+  }
+}

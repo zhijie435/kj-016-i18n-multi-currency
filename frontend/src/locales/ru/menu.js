@@ -1,0 +1,21 @@
+export default {
+  dashboard: 'Панель мониторинга',
+  annotation: 'Разметка',
+  annotation_task: 'Задачи разметки',
+  annotation_work: 'Работа по разметке',
+  review: 'Управление проверкой',
+  review_task: 'Задачи проверки',
+  review_work: 'Работа по проверке',
+  dataset: 'Управление наборами данных',
+  dataset_list: 'Список наборов данных',
+  dataset_import: 'Импорт данных',
+  user: 'Управление пользователями',
+  user_list: 'Список пользователей',
+  role: 'Роли и права',
+  system: 'Системные настройки',
+  system_config: 'Конфигурация системы',
+  operation_log: 'Журнал операций',
+  statistics: 'Статистика',
+  quality_report: 'Отчёт по качеству',
+  workload: 'Статистика рабочей нагрузки'
+}
