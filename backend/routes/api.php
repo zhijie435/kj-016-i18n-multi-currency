@@ -21,4 +21,5 @@ Route::prefix('api')->middleware(['api', \App\Http\Middleware\SetLocale::class])
     Route::put('/channels/{id}/locale', [ChannelController::class, 'updateLocale']);
     Route::delete('/channels/{id}', [ChannelController::class, 'destroy']);
     Route::get('/channels/{channelCode}/locale', [ChannelController::class, 'getChannelLocale']);
+    Route::get('/channels/{channelCode}/currency', [ChannelController::class, 'getChannelCurrency']);
 });

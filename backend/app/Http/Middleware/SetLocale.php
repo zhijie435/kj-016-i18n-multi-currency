@@ -32,6 +32,8 @@ class SetLocale
         App::setLocale($locale);
         Session::put('locale', $locale);
 
+        $this->resolveCurrency($request);
+
         return $next($request);
     }
 
@@ -73,5 +75,32 @@ class SetLocale
         } catch (\Exception $e) {
             return Config::get('app.locale', 'zh_CN');
         }
+    }
+
+    protected function resolveCurrency($request): void
+    {
+        $channelCode = $request->header('X-Channel-Code') ?? $request->input('channel');
+        if ($channelCode) {
+            try {
+                $currency = Channel::getChannelCurrency($channelCode);
+                if ($currency && !empty($currency['code'])) {
+                    Config::set('app.current_currency', $currency);
+                    Session::put('currency', $currency);
+                    return;
+                }
+            } catch (\Exception $e) {
+            }
+        }
+
+        $sessionCurrency = Session::get('currency');
+        if ($sessionCurrency) {
+            Config::set('app.current_currency', $sessionCurrency);
+            return;
+        }
+
+        $defaultCurrency = Config::get('app.default_currency', 'CNY');
+        $currencies = Config::get('app.available_currencies', []);
+        $currency = $currencies[$defaultCurrency] ?? ['code' => $defaultCurrency, 'symbol' => '', 'name' => '', 'decimals' => 2];
+        Config::set('app.current_currency', $currency);
     }
 }

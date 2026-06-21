@@ -1,11 +1,21 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import i18n, { setLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveInitialLocale, loadElementUILocale, mergeLocaleMessages } from '@/locales'
-import { fetchAvailableLocales, updateServerLocale, fetchLocaleMessages, getStoredChannel, setChannel, clearChannel } from '@/api/locale'
-import { fetchEnabledChannels } from '@/api/channel'
+import { fetchAvailableLocales, updateServerLocale, fetchLocaleMessages, getStoredChannel, setChannel, clearChannel, getStoredCurrency, setCurrency, clearCurrency } from '@/api/locale'
+import { fetchEnabledChannels, fetchChannelCurrency } from '@/api/channel'
 import ElementUILocale from 'element-ui/lib/locale'
 
 Vue.use(Vuex)
+
+export const DEFAULT_CURRENCY = { code: 'CNY', symbol: '¥', name: '人民币', decimals: 2 }
+
+export const AVAILABLE_CURRENCIES = {
+  CNY: { code: 'CNY', symbol: '¥', name: '人民币', decimals: 2 },
+  USD: { code: 'USD', symbol: '$', name: '美元', decimals: 2 },
+  EUR: { code: 'EUR', symbol: '€', name: '欧元', decimals: 2 },
+  BRL: { code: 'BRL', symbol: 'R$', name: '巴西雷亚尔', decimals: 2 },
+  RUB: { code: 'RUB', symbol: '₽', name: '俄罗斯卢布', decimals: 2 }
+}
 
 export default new Vuex.Store({
   state: {
@@ -14,7 +24,8 @@ export default new Vuex.Store({
     token: localStorage.getItem('token') || '',
     userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
     channels: [],
-    currentChannel: getStoredChannel() || ''
+    currentChannel: getStoredChannel() || '',
+    currency: getStoredCurrency() || { ...DEFAULT_CURRENCY }
   },
   getters: {
     isLogin: state => !!state.token,
@@ -27,7 +38,9 @@ export default new Vuex.Store({
     })),
     currentChannel: state => state.currentChannel,
     availableChannels: state => state.channels,
-    currentChannelInfo: state => state.channels.find(c => c.code === state.currentChannel) || null
+    currentChannelInfo: state => state.channels.find(c => c.code === state.currentChannel) || null,
+    currentCurrency: state => state.currency,
+    availableCurrencies: state => Object.values(AVAILABLE_CURRENCIES)
   },
   mutations: {
     SET_LOCALE(state, locale) {
@@ -65,6 +78,9 @@ export default new Vuex.Store({
     },
     SET_CURRENT_CHANNEL(state, channelCode) {
       state.currentChannel = channelCode
+    },
+    SET_CURRENCY(state, currency) {
+      state.currency = currency
     }
   },
   actions: {
@@ -138,6 +154,11 @@ export default new Vuex.Store({
         if (res.data?.available) {
           commit('SET_AVAILABLE_LOCALES', res.data.available)
         }
+        if (res.data?.currency?.current) {
+          const currency = res.data.currency.current
+          setCurrency(currency)
+          commit('SET_CURRENCY', currency)
+        }
       } catch (e) {}
     },
 
@@ -174,12 +195,36 @@ export default new Vuex.Store({
         }
       } catch (e) {}
 
+      if (channelCode) {
+        try {
+          const currencyRes = await fetchChannelCurrency(channelCode)
+          if (currencyRes.data?.success && currencyRes.data?.data) {
+            const currency = currencyRes.data.data
+            setCurrency(currency)
+            commit('SET_CURRENCY', currency)
+          }
+        } catch (e) {}
+      } else {
+        const defaultCurrency = { ...DEFAULT_CURRENCY }
+        setCurrency(defaultCurrency)
+        commit('SET_CURRENCY', defaultCurrency)
+      }
+
       return channelCode
     },
 
     async clearChannel({ commit }) {
       clearChannel()
       commit('SET_CURRENT_CHANNEL', '')
+      const defaultCurrency = { ...DEFAULT_CURRENCY }
+      clearCurrency()
+      commit('SET_CURRENCY', defaultCurrency)
+    },
+
+    async changeCurrency({ commit }, currency) {
+      setCurrency(currency)
+      commit('SET_CURRENCY', currency)
+      return currency
     },
 
     async logout({ commit }) {

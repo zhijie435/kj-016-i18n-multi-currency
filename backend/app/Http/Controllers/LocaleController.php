@@ -21,10 +21,16 @@ class LocaleController extends Controller
         }
 
         $currentLocale = App::getLocale();
+        $availableCurrencies = Config::get('app.available_currencies', []);
+        $currentCurrency = Config::get('app.current_currency', $availableCurrencies[Config::get('app.default_currency', 'CNY')] ?? null);
 
         return response()->json([
             'current' => $currentLocale,
             'available' => $availableLocales,
+            'currency' => [
+                'current' => $currentCurrency,
+                'available' => $availableCurrencies,
+            ],
         ]);
     }
 

@@ -43,6 +43,9 @@ class ChannelController extends Controller
             'name' => 'required|string|max:128',
             'description' => 'nullable|string',
             'locale_code' => 'nullable|string|exists:locales,code',
+            'currency_code' => 'nullable|string|max:16',
+            'currency_symbol' => 'nullable|string|max:16',
+            'currency_decimals' => 'nullable|integer|min:0|max:8',
             'is_enabled' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
@@ -53,6 +56,9 @@ class ChannelController extends Controller
             $channel->code = $validated['code'];
             $channel->name = $validated['name'];
             $channel->description = $validated['description'] ?? null;
+            $channel->currency_code = $validated['currency_code'] ?? null;
+            $channel->currency_symbol = $validated['currency_symbol'] ?? null;
+            $channel->currency_decimals = $validated['currency_decimals'] ?? 2;
             $channel->is_enabled = $validated['is_enabled'] ?? true;
             $channel->sort_order = $validated['sort_order'] ?? 0;
 
@@ -91,6 +97,9 @@ class ChannelController extends Controller
             'name' => 'string|max:128',
             'description' => 'nullable|string',
             'locale_code' => 'nullable|string',
+            'currency_code' => 'nullable|string|max:16',
+            'currency_symbol' => 'nullable|string|max:16',
+            'currency_decimals' => 'nullable|integer|min:0|max:8',
             'is_enabled' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
@@ -105,6 +114,15 @@ class ChannelController extends Controller
             }
             if (array_key_exists('description', $validated)) {
                 $channel->description = $validated['description'];
+            }
+            if (isset($validated['currency_code'])) {
+                $channel->currency_code = $validated['currency_code'];
+            }
+            if (isset($validated['currency_symbol'])) {
+                $channel->currency_symbol = $validated['currency_symbol'];
+            }
+            if (isset($validated['currency_decimals'])) {
+                $channel->currency_decimals = $validated['currency_decimals'];
             }
             if (isset($validated['is_enabled'])) {
                 $channel->is_enabled = $validated['is_enabled'];
@@ -220,6 +238,22 @@ class ChannelController extends Controller
         return response()->json([
             'success' => true,
             'data' => $locale,
+        ]);
+    }
+
+    public function getChannelCurrency($channelCode)
+    {
+        $currency = Channel::getChannelCurrency($channelCode);
+
+        if (!$currency) {
+            $defaultCurrency = config('app.default_currency', 'CNY');
+            $currencies = config('app.available_currencies', []);
+            $currency = $currencies[$defaultCurrency] ?? ['code' => $defaultCurrency, 'symbol' => '', 'name' => '', 'decimals' => 2];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $currency,
         ]);
     }
 }

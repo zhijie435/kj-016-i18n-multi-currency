@@ -5,6 +5,7 @@
         <h1 class="logo">{{ $t('common.app_name') }}</h1>
       </div>
       <div class="header-right">
+        <ChannelSwitcher />
         <LanguageSwitcher />
         <el-dropdown @command="handleCommand">
           <span class="user-info">
@@ -81,10 +82,11 @@
 <script>
 import { mapGetters } from 'vuex'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import ChannelSwitcher from '@/components/ChannelSwitcher.vue'
 
 export default {
   name: 'App',
-  components: { LanguageSwitcher },
+  components: { LanguageSwitcher, ChannelSwitcher },
   computed: {
     ...mapGetters(['isLogin', 'userInfo'])
   },
@@ -105,3 +107,13 @@ export default {
   }
 }
 </script>
+
+<style lang="scss">
+.app-header {
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+</style>

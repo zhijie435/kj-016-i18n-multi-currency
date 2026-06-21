@@ -47,3 +47,24 @@ export function clearChannel() {
     localStorage.removeItem('app_channel')
   } catch (e) {}
 }
+
+export function setCurrency(currency) {
+  try {
+    localStorage.setItem('app_currency', JSON.stringify(currency))
+  } catch (e) {}
+}
+
+export function getStoredCurrency() {
+  try {
+    const stored = localStorage.getItem('app_currency')
+    return stored ? JSON.parse(stored) : null
+  } catch (e) {
+    return null
+  }
+}
+
+export function clearCurrency() {
+  try {
+    localStorage.removeItem('app_currency')
+  } catch (e) {}
+}

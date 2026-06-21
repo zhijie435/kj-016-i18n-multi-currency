@@ -25,6 +25,16 @@ return [
         'ru'    => ['name' => 'Russian',   'native' => 'Русский'],
     ],
 
+    'default_currency' => 'CNY',
+
+    'available_currencies' => [
+        'CNY' => ['name' => '人民币', 'symbol' => '¥', 'code' => 'CNY', 'decimals' => 2],
+        'USD' => ['name' => '美元',   'symbol' => '$', 'code' => 'USD', 'decimals' => 2],
+        'EUR' => ['name' => '欧元',   'symbol' => '€', 'code' => 'EUR', 'decimals' => 2],
+        'BRL' => ['name' => '巴西雷亚尔', 'symbol' => 'R$', 'code' => 'BRL', 'decimals' => 2],
+        'RUB' => ['name' => '俄罗斯卢布', 'symbol' => '₽', 'code' => 'RUB', 'decimals' => 2],
+    ],
+
     'key' => env('APP_KEY'),
 
     'cipher' => 'AES-256-CBC',

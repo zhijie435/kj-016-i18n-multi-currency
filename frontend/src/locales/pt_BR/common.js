@@ -55,5 +55,11 @@ export default {
   channel: 'Canal',
   switch_channel: 'Mudar Canal',
   channel_changed: 'Canal alterado',
-  default_channel: 'Canal Padrão'
+  default_channel: 'Canal Padrão',
+  currency: 'Moeda',
+  currency_code: 'Código da Moeda',
+  currency_symbol: 'Símbolo da Moeda',
+  switch_currency: 'Mudar Moeda',
+  currency_changed: 'Moeda alterada',
+  default_currency: 'Moeda Padrão'
 }

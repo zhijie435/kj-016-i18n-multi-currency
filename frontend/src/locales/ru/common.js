@@ -55,5 +55,11 @@ export default {
   channel: 'Канал',
   switch_channel: 'Сменить канал',
   channel_changed: 'Канал изменен',
-  default_channel: 'Канал по умолчанию'
+  default_channel: 'Канал по умолчанию',
+  currency: 'Валюта',
+  currency_code: 'Код валюты',
+  currency_symbol: 'Символ валюты',
+  switch_currency: 'Сменить валюту',
+  currency_changed: 'Валюта изменена',
+  default_currency: 'Валюта по умолчанию'
 }

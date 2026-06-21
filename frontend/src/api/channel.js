@@ -31,3 +31,7 @@ export function deleteChannel(id) {
 export function fetchChannelLocale(channelCode) {
   return request.get(`/channels/${channelCode}/locale`)
 }
+
+export function fetchChannelCurrency(channelCode) {
+  return request.get(`/channels/${channelCode}/currency`)
+}
