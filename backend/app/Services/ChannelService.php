@@ -47,9 +47,14 @@ class ChannelService
         return $channel;
     }
 
+    public function findByCode(string $code): ?Channel
+    {
+        return $this->channelRepository->findByCode($code);
+    }
+
     public function getByCode(string $code): Channel
     {
-        $channel = $this->channelRepository->findByCode($code);
+        $channel = $this->findByCode($code);
         if (!$channel) {
             throw new NotFoundException('Channel');
         }

@@ -10,13 +10,13 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'timezone' => 'Asia/Shanghai',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Shanghai'),
 
-    'locale' => 'zh_CN',
+    'locale' => env('APP_DEFAULT_LOCALE', 'zh_CN'),
 
-    'fallback_locale' => 'en',
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
-    'faker_locale' => 'zh_CN',
+    'faker_locale' => env('APP_DEFAULT_LOCALE', 'zh_CN'),
 
     'available_locales' => [
         'zh_CN' => ['name' => '简体中文', 'native' => '简体中文'],
@@ -25,7 +25,7 @@ return [
         'ru'    => ['name' => 'Russian',   'native' => 'Русский'],
     ],
 
-    'default_currency' => 'CNY',
+    'default_currency' => env('APP_DEFAULT_CURRENCY', 'CNY'),
 
     'default_role' => 'viewer',
 
@@ -35,6 +35,29 @@ return [
         'EUR' => ['name' => '欧元',   'symbol' => '€', 'code' => 'EUR', 'decimals' => 2],
         'BRL' => ['name' => '巴西雷亚尔', 'symbol' => 'R$', 'code' => 'BRL', 'decimals' => 2],
         'RUB' => ['name' => '俄罗斯卢布', 'symbol' => '₽', 'code' => 'RUB', 'decimals' => 2],
+    ],
+
+    'multi_language_enabled' => env('MULTI_LANGUAGE_ENABLED', true),
+
+    'multi_currency_enabled' => env('MULTI_CURRENCY_ENABLED', true),
+
+    'currency_conversion_precision' => env('CURRENCY_CONVERSION_PRECISION', 8),
+
+    'currency_rounding_mode' => env('CURRENCY_ROUNDING_MODE', 'half_up'),
+
+    'exchange_rate' => [
+        'api_enabled' => env('EXCHANGE_RATE_API_ENABLED', false),
+        'api_source' => env('EXCHANGE_RATE_API_SOURCE', 'manual'),
+        'api_key' => env('EXCHANGE_RATE_API_KEY', ''),
+        'api_url' => env('EXCHANGE_RATE_API_URL', ''),
+        'auto_update' => env('EXCHANGE_RATE_AUTO_UPDATE', false),
+        'update_interval' => env('EXCHANGE_RATE_UPDATE_INTERVAL', 3600),
+        'cache_ttl' => env('EXCHANGE_RATE_CACHE_TTL', 1800),
+    ],
+
+    'cache' => [
+        'locale_ttl' => env('LOCALE_CACHE_TTL', 3600),
+        'currency_ttl' => env('CURRENCY_CACHE_TTL', 3600),
     ],
 
     'key' => env('APP_KEY'),
