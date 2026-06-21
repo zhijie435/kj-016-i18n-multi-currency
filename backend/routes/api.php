@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ChannelController;
+use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\ExchangeRateController;
 
 Route::prefix('api')->middleware(['api', \App\Http\Middleware\SetLocale::class])->group(function () {
     Route::get('/locale', [LocaleController::class, 'index']);
@@ -22,4 +24,23 @@ Route::prefix('api')->middleware(['api', \App\Http\Middleware\SetLocale::class])
     Route::delete('/channels/{id}', [ChannelController::class, 'destroy']);
     Route::get('/channels/{channelCode}/locale', [ChannelController::class, 'getChannelLocale']);
     Route::get('/channels/{channelCode}/currency', [ChannelController::class, 'getChannelCurrency']);
+
+    Route::get('/currencies', [CurrencyController::class, 'index']);
+    Route::get('/currencies/enabled', [CurrencyController::class, 'enabled']);
+    Route::get('/currencies/{code}', [CurrencyController::class, 'show']);
+    Route::post('/currencies', [CurrencyController::class, 'store']);
+    Route::put('/currencies/{id}', [CurrencyController::class, 'update']);
+    Route::delete('/currencies/{id}', [CurrencyController::class, 'destroy']);
+
+    Route::get('/exchange-rates', [ExchangeRateController::class, 'index']);
+    Route::get('/exchange-rates/active', [ExchangeRateController::class, 'active']);
+    Route::get('/exchange-rates/rate', [ExchangeRateController::class, 'getRate']);
+    Route::get('/exchange-rates/convert', [ExchangeRateController::class, 'convert']);
+    Route::post('/exchange-rates/matrix', [ExchangeRateController::class, 'matrix']);
+    Route::get('/exchange-rates/{id}', [ExchangeRateController::class, 'show']);
+    Route::post('/exchange-rates', [ExchangeRateController::class, 'store']);
+    Route::put('/exchange-rates/{id}', [ExchangeRateController::class, 'update']);
+    Route::delete('/exchange-rates/{id}', [ExchangeRateController::class, 'destroy']);
+    Route::post('/exchange-rates/{id}/activate', [ExchangeRateController::class, 'activate']);
+    Route::post('/exchange-rates/{id}/deactivate', [ExchangeRateController::class, 'deactivate']);
 });

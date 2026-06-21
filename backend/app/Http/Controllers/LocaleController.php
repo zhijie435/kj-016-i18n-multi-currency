@@ -21,8 +21,46 @@ class LocaleController extends Controller
         }
 
         $currentLocale = App::getLocale();
-        $availableCurrencies = Config::get('app.available_currencies', []);
-        $currentCurrency = Config::get('app.current_currency', $availableCurrencies[Config::get('app.default_currency', 'CNY')] ?? null);
+
+        try {
+            $enabledCurrencies = \App\Models\Currency::enabled()->ordered()->get();
+            if ($enabledCurrencies->isNotEmpty()) {
+                $availableCurrencies = $enabledCurrencies->keyBy('code')->map(function ($currency) {
+                    return [
+                        'name' => $currency->name,
+                        'symbol' => $currency->symbol,
+                        'code' => $currency->code,
+                        'decimals' => $currency->decimals,
+                    ];
+                })->toArray();
+            } else {
+                $availableCurrencies = Config::get('app.available_currencies', []);
+            }
+        } catch (\Exception $e) {
+            $availableCurrencies = Config::get('app.available_currencies', []);
+        }
+
+        $defaultCode = Config::get('app.default_currency', 'CNY');
+        $channelCode = request()->header('X-Channel-Code') ?: request()->input('channel_code');
+        $currentCurrency = null;
+
+        if ($channelCode) {
+            try {
+                $channel = \App\Models\Channel::findByCode($channelCode);
+                if ($channel && $channel->currency_code) {
+                    $currentCurrency = $channel->currency_info;
+                }
+            } catch (\Exception $e) {}
+        }
+
+        if (!$currentCurrency) {
+            $currentCurrency = $availableCurrencies[$defaultCode] ?? [
+                'code' => $defaultCode,
+                'name' => '',
+                'symbol' => '',
+                'decimals' => 2,
+            ];
+        }
 
         return response()->json([
             'current' => $currentLocale,

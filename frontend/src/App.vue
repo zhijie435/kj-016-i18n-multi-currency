@@ -6,6 +6,7 @@
       </div>
       <div class="header-right">
         <ChannelSwitcher />
+        <CurrencySwitcher />
         <LanguageSwitcher />
         <el-dropdown @command="handleCommand">
           <span class="user-info">
@@ -83,10 +84,11 @@
 import { mapGetters } from 'vuex'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import ChannelSwitcher from '@/components/ChannelSwitcher.vue'
+import CurrencySwitcher from '@/components/CurrencySwitcher.vue'
 
 export default {
   name: 'App',
-  components: { LanguageSwitcher, ChannelSwitcher },
+  components: { LanguageSwitcher, ChannelSwitcher, CurrencySwitcher },
   computed: {
     ...mapGetters(['isLogin', 'userInfo'])
   },
