@@ -1,5 +1,5 @@
 <template>
-  <el-container class="app-container">
+  <el-container class="app-container" direction="vertical">
     <el-header v-if="isLogin" class="app-header">
       <div class="header-left">
         <h1 class="logo">{{ $t('common.app_name') }}</h1>
@@ -18,7 +18,7 @@
         </el-dropdown>
       </div>
     </el-header>
-    <el-container>
+    <el-container direction="horizontal">
       <el-aside v-if="isLogin" width="220px" class="app-aside">
         <el-menu
           :default-active="$route.path"
